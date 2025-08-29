@@ -1,0 +1,6 @@
+on:
+  workflow_call:
+
+jobs:
+  playwright:
+    uses: PeterLaudel/actions/.github/workflows/playwright.yml@main

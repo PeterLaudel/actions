@@ -1,8 +1,0 @@
-name: Run nextjs build and tests
-
-runs:
-  using: "composite"
-  steps:
-    - uses: actions/checkout@v4
-    - name: Run Playwright tests
-      uses: ./playwright
