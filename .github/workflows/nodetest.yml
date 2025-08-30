@@ -23,6 +23,7 @@ jobs:
     needs: create-image-tag
     name: Build Docker image
     runs-on: ubuntu-latest
+    environment: build
     env:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
 
