@@ -6,5 +6,7 @@ on:
 jobs:
   playwright:
     uses: PeterLaudel/actions/.github/workflows/playwright.yml@main
+    secrets: inherit
   nodetest:
     uses: PeterLaudel/actions/.github/workflows/nodetest.yml@main
+    secrets: inherit
