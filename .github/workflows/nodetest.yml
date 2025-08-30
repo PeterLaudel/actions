@@ -77,6 +77,7 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-latest
+    environment: build
     needs:
       - build-image
       - create-image-tag
@@ -84,19 +85,36 @@ jobs:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            docker-compose.yml
 
-      - name: Download artifact
-        uses: actions/download-artifact@v4
+      - name: Authenticate with Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
         with:
-          name: ${{ env.IMAGE_TAG }}
-          path: ${{ runner.temp }}
+          token_format: access_token
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
+          access_token_lifetime: 300s
 
-      - name: Load builder image
-        run: |
-          docker load -i ${{ runner.temp }}/${{ env.IMAGE_TAG }}.tar
+      # Login to Google Artifact Registry
+      - name: Login to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: europe-west10-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 🏗️ Build the 'builder' stage
+      - name: Build builder stage
+        uses: docker/build-push-action@v6
+        with:
+          push: false
+          load: true
+          target: builder
+          tags: builder:${{ env.IMAGE_TAG }}
+          cache-from: type=registry,ref=europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:buildcache
 
       - name: Run tests
         run: IMAGE=builder:${{ env.IMAGE_TAG }} docker compose up --abort-on-container-exit --exit-code-from app
