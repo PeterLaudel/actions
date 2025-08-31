@@ -24,7 +24,6 @@ jobs:
     needs: create-image-tag
     name: Build Docker image
     runs-on: ubuntu-latest
-    environment: build
     env:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
 
@@ -53,7 +52,6 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-latest
-    environment: build
     needs:
       - build-image
       - create-image-tag
@@ -84,7 +82,6 @@ jobs:
   lint:
     name: Run lint
     runs-on: ubuntu-latest
-    environment: build
     needs:
       - build-image
       - create-image-tag
@@ -110,7 +107,6 @@ jobs:
   typecheck:
     name: Run typecheck
     runs-on: ubuntu-latest
-    environment: build
     needs:
       - build-image
       - create-image-tag
@@ -136,7 +132,6 @@ jobs:
   e2e:
     name: Run e2e tests
     runs-on: ubuntu-latest
-    environment: build
     needs:
       - build-image
       - create-image-tag
