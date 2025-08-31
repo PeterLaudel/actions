@@ -36,23 +36,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Authenticate with Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          token_format: access_token
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.SERVICE_ACCOUNT }}
-          access_token_lifetime: 300s
-
-      # Login to Google Artifact Registry
-      - name: Login to Artifact Registry
-        uses: docker/login-action@v3
-        with:
-          registry: europe-west10-docker.pkg.dev
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -64,9 +47,8 @@ jobs:
           load: false
           target: builder
           tags: builder:${{ env.IMAGE_TAG }}
-          outputs: type=docker,dest=${{ runner.temp }}/${{ env.IMAGE_TAG }}.tar
-          cache-from: type=registry,ref=europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:buildcache
-          cache-to: type=registry,ref=europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   test:
     name: Run tests
@@ -79,23 +61,9 @@ jobs:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Authenticate with Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
         with:
-          token_format: access_token
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.SERVICE_ACCOUNT }}
-          access_token_lifetime: 300s
-
-      # Login to Google Artifact Registry
-      - name: Login to Artifact Registry
-        uses: docker/login-action@v3
-        with:
-          registry: europe-west10-docker.pkg.dev
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
+          sparse-checkout: |
+            docker-compose.yml
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -108,7 +76,7 @@ jobs:
           load: true
           target: builder
           tags: builder:${{ env.IMAGE_TAG }}
-          cache-from: type=registry,ref=europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:buildcache
+          cache-from: type=gha
 
       - name: Run tests
         run: IMAGE=builder:${{ env.IMAGE_TAG }} docker compose up --abort-on-container-exit --exit-code-from app
@@ -123,25 +91,6 @@ jobs:
     env:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Authenticate with Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          token_format: access_token
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.SERVICE_ACCOUNT }}
-          access_token_lifetime: 300s
-
-      # Login to Google Artifact Registry
-      - name: Login to Artifact Registry
-        uses: docker/login-action@v3
-        with:
-          registry: europe-west10-docker.pkg.dev
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -153,7 +102,7 @@ jobs:
           load: true
           target: builder
           tags: builder:${{ env.IMAGE_TAG }}
-          cache-from: type=registry,ref=europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:buildcache
+          cache-from: type=gha
 
       - name: Run lint
         run: docker run --rm builder:${{ env.IMAGE_TAG }} npm run lint
@@ -168,25 +117,6 @@ jobs:
     env:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Authenticate with Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          token_format: access_token
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.SERVICE_ACCOUNT }}
-          access_token_lifetime: 300s
-
-      # Login to Google Artifact Registry
-      - name: Login to Artifact Registry
-        uses: docker/login-action@v3
-        with:
-          registry: europe-west10-docker.pkg.dev
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -198,7 +128,7 @@ jobs:
           load: true
           target: builder
           tags: builder:${{ env.IMAGE_TAG }}
-          cache-from: type=registry,ref=europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:buildcache
+          cache-from: type=gha
 
       - name: Run typecheck
         run: docker run --rm builder:${{ env.IMAGE_TAG }} npm run typecheck
@@ -215,23 +145,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Authenticate with Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v2
-        with:
-          token_format: access_token
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.SERVICE_ACCOUNT }}
-          access_token_lifetime: 300s
-
-      # Login to Google Artifact Registry
-      - name: Login to Artifact Registry
-        uses: docker/login-action@v3
-        with:
-          registry: europe-west10-docker.pkg.dev
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -243,8 +156,7 @@ jobs:
           load: true
           target: e2e
           tags: e2e:${{ env.IMAGE_TAG }}
-          cache-from: type=registry,ref=europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:buildcache
-          cache-to: type=registry,ref=europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:buildcache,mode=max
+          cache-from: type=gha
 
-      - name: Run typecheck
+      - name: Run e2e tests
         run: docker run --rm e2e:${{ env.IMAGE_TAG }} -e CI='true' npm run e2e
