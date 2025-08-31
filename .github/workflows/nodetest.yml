@@ -159,4 +159,4 @@ jobs:
           cache-from: type=gha
 
       - name: Run e2e tests
-        run: docker run --rm e2e:${{ env.IMAGE_TAG }} -e CI='true' npm run e2e
+        run: docker run --rm -e CI='true' e2e:${{ env.IMAGE_TAG }} npm run e2e
