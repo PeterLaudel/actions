@@ -1,9 +1,0 @@
-name: Next.js CI
-
-on:
-  workflow_call:
-
-jobs:
-  playwright:
-    uses: PeterLaudel/actions/.github/workflows/nodetest.yml@main
-    secrets: inherit
