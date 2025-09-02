@@ -2,6 +2,11 @@ name: Test application
 
 on:
   workflow_call:
+    inputs:
+      e2e:
+        required: true
+        type: boolean
+        default: false
     
 
 jobs:
@@ -29,7 +34,6 @@ jobs:
 
     permissions:
       contents: "read"
-      id-token: "write"
 
     steps:
       - name: Checkout code
