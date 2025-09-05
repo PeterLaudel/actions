@@ -115,6 +115,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: "read"
+      id-token: "write"
 
     runs-on: ubuntu-latest
     environment:
@@ -167,6 +168,7 @@ jobs:
 
     permissions:
       contents: "read"
+      id-token: "write"
 
     needs:
       - push-image
@@ -177,7 +179,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}-deploy
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.DEPLOY_REPO_PAT }}
           path: deploy-repo
 
       - name: Update values.yaml
