@@ -172,6 +172,7 @@ jobs:
 
     needs:
       - push-image
+      - create-image-tag
     env:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
     steps:
