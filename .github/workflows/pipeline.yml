@@ -19,7 +19,10 @@ jobs:
       - name: Extract image tag
         id: create
         run: |
-          IMAGE_TAG="$BRANCH_NAME-${{ github.run_number }}-$(echo $GITHUB_SHA | cut -c1-7)"
+          # Docker tags only allow [A-Za-z0-9_.-] and max 128 chars; branch names like
+          # "claude/foo" contain "/", which makes buildx reject the tag.
+          SAFE_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^A-Za-z0-9_.-]/-/g' | cut -c1-100)
+          IMAGE_TAG="$SAFE_BRANCH-${{ github.run_number }}-$(echo $GITHUB_SHA | cut -c1-7)"
           echo "TAG=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "Final IMAGE_TAG: ${IMAGE_TAG}"
     env:
