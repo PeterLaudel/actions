@@ -7,12 +7,29 @@ on:
         required: true
         type: boolean
         default: false
-    
+      runner:
+        description: >-
+          Runner label for the build and test jobs, e.g. "self-hosted". Pushing and deploying the
+          image always runs on ubuntu-latest, so the image keeps the cluster's architecture.
+        required: false
+        type: string
+        default: ubuntu-latest
+      image:
+        description: Image name in the Artifact Registry
+        required: false
+        type: string
+        default: psychotherapie-seliger
+      deploy:
+        description: Push the image and update the deploy repository (on main)
+        required: false
+        type: boolean
+        default: true
+
 
 jobs:
   create-image-tag:
     name: Create image tag
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     outputs:
       image-tag: ${{ steps.create.outputs.TAG }}
     steps:
@@ -31,13 +48,11 @@ jobs:
   build-image:
     needs: create-image-tag
     name: Build Docker image
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     env:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
 
-    permissions:
-      contents: "read"
-
+    # No permissions block: the job gets what the caller grants (e.g. packages: read for npm ci)
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -55,10 +70,12 @@ jobs:
           tags: builder:${{ env.IMAGE_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          secrets: |
+            npmrc=//npm.pkg.github.com/:_authToken=${{ github.token }}
 
   test:
     name: Run tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     needs:
       - build-image
       - create-image-tag
@@ -82,13 +99,16 @@ jobs:
           target: builder
           tags: builder:${{ env.IMAGE_TAG }}
           cache-from: type=gha
+          secrets: |
+            npmrc=//npm.pkg.github.com/:_authToken=${{ github.token }}
 
       - name: Run tests
         run: IMAGE=builder:${{ env.IMAGE_TAG }} docker compose run --rm app test 
 
   e2e:
     name: Run e2e tests
-    runs-on: ubuntu-latest
+    if: ${{ inputs.e2e }}
+    runs-on: ${{ inputs.runner }}
     needs:
       - build-image
       - create-image-tag
@@ -109,13 +129,19 @@ jobs:
           target: builder
           tags: builder:${{ env.IMAGE_TAG }}
           cache-from: type=gha
+          secrets: |
+            npmrc=//npm.pkg.github.com/:_authToken=${{ github.token }}
 
       - name: Run e2e tests
         run: IMAGE="builder:${{ env.IMAGE_TAG }}" docker compose run --rm -e CI='true' app e2e
 
   push-image:
     name: Push Image
-    if: github.ref == 'refs/heads/main'
+    # Also when e2e was skipped (e2e: false): a skipped dependency would skip this job otherwise
+    if: >-
+      inputs.deploy && github.ref == 'refs/heads/main' && !cancelled() &&
+      needs.test.result == 'success' &&
+      contains(fromJSON('["success", "skipped"]'), needs.e2e.result)
     permissions:
       contents: "read"
       id-token: "write"
@@ -159,12 +185,14 @@ jobs:
           push: true
           target: runner
           tags: |
-            europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:${{ env.IMAGE_TAG }}
+            europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/${{ inputs.image }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha
+          secrets: |
+            npmrc=//npm.pkg.github.com/:_authToken=${{ github.token }}
 
   deploy:
     name: Deploy
-    if: github.ref == 'refs/heads/main' 
+    if: inputs.deploy && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: build
