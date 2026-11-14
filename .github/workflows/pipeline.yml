@@ -7,12 +7,19 @@ on:
         required: true
         type: boolean
         default: false
-    
+      runner:
+        description: >-
+          Runner label for the build and test jobs, e.g. "self-hosted". Pushing and deploying the
+          image always runs on ubuntu-latest, so the image keeps the cluster's architecture.
+        required: false
+        type: string
+        default: ubuntu-latest
+
 
 jobs:
   create-image-tag:
     name: Create image tag
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     outputs:
       image-tag: ${{ steps.create.outputs.TAG }}
     steps:
@@ -31,7 +38,7 @@ jobs:
   build-image:
     needs: create-image-tag
     name: Build Docker image
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     env:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
 
@@ -58,7 +65,7 @@ jobs:
 
   test:
     name: Run tests
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     needs:
       - build-image
       - create-image-tag
@@ -88,7 +95,8 @@ jobs:
 
   e2e:
     name: Run e2e tests
-    runs-on: ubuntu-latest
+    if: ${{ inputs.e2e }}
+    runs-on: ${{ inputs.runner }}
     needs:
       - build-image
       - create-image-tag
@@ -115,7 +123,11 @@ jobs:
 
   push-image:
     name: Push Image
-    if: github.ref == 'refs/heads/main'
+    # Also when e2e was skipped (e2e: false): a skipped dependency would skip this job otherwise
+    if: >-
+      github.ref == 'refs/heads/main' && !cancelled() &&
+      needs.test.result == 'success' &&
+      contains(fromJSON('["success", "skipped"]'), needs.e2e.result)
     permissions:
       contents: "read"
       id-token: "write"
