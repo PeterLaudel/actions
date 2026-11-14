@@ -14,6 +14,16 @@ on:
         required: false
         type: string
         default: ubuntu-latest
+      image:
+        description: Image name in the Artifact Registry
+        required: false
+        type: string
+        default: psychotherapie-seliger
+      deploy:
+        description: Push the image and update the deploy repository (on main)
+        required: false
+        type: boolean
+        default: true
 
 
 jobs:
@@ -39,9 +49,7 @@ jobs:
     env:
       IMAGE_TAG: ${{ needs.create-image-tag.outputs.image-tag }}
 
-    permissions:
-      contents: "read"
-
+    # No permissions block: the job gets what the caller grants (e.g. packages: read for npm ci)
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -59,6 +67,8 @@ jobs:
           tags: builder:${{ env.IMAGE_TAG }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          secrets: |
+            npmrc=//npm.pkg.github.com/:_authToken=${{ github.token }}
 
   test:
     name: Run tests
@@ -86,6 +96,8 @@ jobs:
           target: builder
           tags: builder:${{ env.IMAGE_TAG }}
           cache-from: type=gha
+          secrets: |
+            npmrc=//npm.pkg.github.com/:_authToken=${{ github.token }}
 
       - name: Run tests
         run: IMAGE=builder:${{ env.IMAGE_TAG }} docker compose run --rm app test 
@@ -114,6 +126,8 @@ jobs:
           target: builder
           tags: builder:${{ env.IMAGE_TAG }}
           cache-from: type=gha
+          secrets: |
+            npmrc=//npm.pkg.github.com/:_authToken=${{ github.token }}
 
       - name: Run e2e tests
         run: IMAGE="builder:${{ env.IMAGE_TAG }}" docker compose run --rm -e CI='true' app e2e
@@ -122,7 +136,7 @@ jobs:
     name: Push Image
     # Also when e2e was skipped (e2e: false): a skipped dependency would skip this job otherwise
     if: >-
-      github.ref == 'refs/heads/main' && !cancelled() &&
+      inputs.deploy && github.ref == 'refs/heads/main' && !cancelled() &&
       needs.test.result == 'success' &&
       contains(fromJSON('["success", "skipped"]'), needs.e2e.result)
     permissions:
@@ -168,12 +182,14 @@ jobs:
           push: true
           target: runner
           tags: |
-            europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/psychotherapie-seliger:${{ env.IMAGE_TAG }}
+            europe-west10-docker.pkg.dev/psychotherapie-seliger-adm/images/${{ inputs.image }}:${{ env.IMAGE_TAG }}
           cache-from: type=gha
+          secrets: |
+            npmrc=//npm.pkg.github.com/:_authToken=${{ github.token }}
 
   deploy:
     name: Deploy
-    if: github.ref == 'refs/heads/main' 
+    if: inputs.deploy && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: build
