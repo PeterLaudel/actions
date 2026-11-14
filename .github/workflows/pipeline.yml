@@ -86,6 +86,8 @@ jobs:
         with:
           sparse-checkout: |
             docker-compose.yml
+          # A single file, not a directory: cone mode (the default) rejects that on newer git
+          sparse-checkout-cone-mode: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
